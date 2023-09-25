@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from json import JSONDecodeError
 
 import openpyxl
+import psycopg2
 
 from src.models.Vacancy import Vacancy
 
@@ -274,3 +275,101 @@ class TxtVacancyStorage(VacancyStorage):
         self.load_from_file()
         self.vacancies = [vacancy for vacancy in self.vacancies if vacancy['id_num'] != vacancy_id]
         self.save_to_file()
+
+
+class DatabaseSaver:
+    """
+    Класс DatabaseSaver предназначен для сохранения данных о вакансиях в базу данных PostgreSQL.
+
+    Attributes:
+        connection (psycopg2.extensions.connection): Соединение с базой данных PostgreSQL.
+
+    Methods:
+        save_to_database(list_vacancies: list[dict]) -> None:
+            Сохраняет список вакансий в базу данных. Перед сохранением выполняет очистку таблицы 'vacancies' и сброс
+            счетчика первичного ключа.
+
+    Example:
+        # Создаем объект класса DatabaseSaver
+        database_saver = DatabaseSaver()
+
+        # Список вакансий для сохранения
+        vacancies_data = [
+            {
+                'id_num': 1,
+                'vacancy_name': 'Python Developer',
+                'company_name': 'Example Company',
+                'description': 'Job description...',
+                'salary_from': 50000.0,
+                'salary_to': 80000.0,
+                'salary_currency': 'USD',
+                'area': 'New York',
+                'url': 'https://example.com/job/1'
+            },
+            # Другие вакансии...
+        ]
+
+        # Сохраняем вакансии в базу данных
+        database_saver.save_to_database(vacancies_data)
+    """
+
+    def __init__(self):
+        """
+        Инициализирует объект класса DatabaseSaver и устанавливает соединение с базой данных PostgreSQL.
+        """
+        self.connection = psycopg2.connect(
+            host="localhost",
+            database="postgres",
+            user="postgres",
+            password="test",
+        )
+
+    def save_to_database(self, list_vacancies: list[dict]) -> None:
+        """
+        Сохраняет список вакансий в базу данных PostgreSQL.
+
+        Args:
+            list_vacancies (list[dict]): Список словарей, где каждый словарь представляет информацию о вакансии.
+                Каждый словарь должен содержать ключи: 'id_num', 'vacancy_name', 'company_name', 'description',
+                'salary_from', 'salary_to', 'salary_currency', 'area', 'url'.
+
+        Returns:
+            None
+        """
+        with self.connection as conn:
+            with conn.cursor() as cursor:
+                # Очищаем таблицу 'vacancies' и сбрасываем счетчик первичного ключа
+                delete_query = ("TRUNCATE TABLE vacancies RESTART IDENTITY;")
+                cursor.execute(delete_query)
+
+                # Сохраняем каждую вакансию из списка
+                for item in list_vacancies:
+                    id_num = item['id_num']
+                    vacancy_name = item['vacancy_name']
+                    company_name = item['company_name']
+                    description = item['description']
+                    salary_from = item['salary_from']
+                    salary_to = item['salary_to']
+                    salary_currency = item['salary_currency']
+                    area = item['area']
+                    url = item['url']
+
+                    # SQL-запрос для вставки данных в таблицу 'vacancies'
+                    query = (
+                        "INSERT INTO vacancies"
+                        "("
+                        "id_num,"
+                        "vacancy_name,"
+                        "company_name,"
+                        "description,"
+                        "salary_from,"
+                        "salary_to,"
+                        "salary_currency,"
+                        "area,"
+                        "url"
+                        ")"
+                        "VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s);"
+                    )
+                    cursor.execute(query, (
+                        id_num, vacancy_name, company_name, description, salary_from, salary_to, salary_currency, area,
+                        url))

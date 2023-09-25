@@ -1,3 +1,4 @@
+from DBManager import DBManager
 from src.UserInterface import UserInterface
 from src.VacancyStorage import JsonVacancyStorage
 from src.api.HhAPI import HhAPI, ControllerHH
@@ -12,7 +13,7 @@ def search_vacancy():
         Использует ввод пользователя для получения параметров поиска,
         таких как: сайт, ключевой запрос, город, опыт, количество вакансий, сортировка.
         После чего, использует соответствующий API для получения данных и выводит их на экран.
-        Затем сохраняет результаты в файл в формате JSON, TXT, CSV или Excel.
+        Затем сохраняет результаты в файл в формате JSON, DB, TXT, CSV или Excel.
 
         :return: None
     """
@@ -155,3 +156,63 @@ def search_by_criterion():
         for vacancy in matched:
             print(vacancy)
             print("-" * 100)
+
+
+def print_db_menu():
+    print("\nЧто хотите вывести?\n"
+          "1.Получить список всех компаний и количество вакансий у каждой компании.\n"
+          "2.Получить список всех вакансий с указанием названия компании, "
+          "названия вакансии и зарплаты и ссылки на вакансию.\n"
+          "3.Получить среднюю зарплату по вакансиям.\n"
+          "4.Получить список всех вакансий, у которых зарплата выше средней по всем вакансиям.\n"
+          "5.Получить список всех вакансий, в названии которых содержатся переданные в метод слова, например python.\n"
+          "0.Выход\n")
+
+
+def db_manipulation():
+    """
+        Функция для взаимодействия с базой данных через объект класса DBManager.
+
+        Пользователь может выбирать различные операции из меню.
+
+        Returns: None
+    """
+
+    database = DBManager()
+
+    if not database.checking_for_emptiness():
+        return
+
+    print("Вы находитесь в меню взаимодействия с БД")
+
+    flag = True
+    while flag:
+        print_db_menu()
+        choose = input("Ввод: ")
+        match choose:
+            case "1":
+                database.get_companies_and_vacancies_count()
+            case "2":
+                for item in database.get_all_vacancies():
+                    print("-" * 100)
+                    print(item)
+            case "3":
+                database.get_avg_salary()
+            case "4":
+                for item in database.get_vacancies_with_higher_salary():
+                    print("-" * 100)
+                    print(item)
+            case "5":
+                keyword = input("Введите ключевое слово(напр. Python): ")
+                list_of_vacancies = database.get_vacancies_with_keyword(keyword)
+
+                if len(list_of_vacancies) == 0:
+                    print("Ничего не найдено ")
+                else:
+                    for item in list_of_vacancies:
+                        print("-" * 100)
+                        print(item)
+            case "0":
+                flag = False
+            case _:
+                print("Ошибка ввода")
